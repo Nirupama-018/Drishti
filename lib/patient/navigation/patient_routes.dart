@@ -13,80 +13,104 @@ import '../screens/progress_screen.dart';
 import '../screens/reminder_screen.dart';
 
 class PatientRoutes {
+  static const String home = '/patient';
+  static const String activities = '/patient/activities';
+  static const String instructions = '/patient/instructions';
+  static const String game = '/patient/game';
+  static const String result = '/patient/result';
+  static const String progress = '/patient/progress';
+  static const String reminders = '/patient/reminders';
+
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      // --------------------------------------------------
-      // HOME
-      // --------------------------------------------------
+    // --------------------------------------------------
+    // HOME
+    // --------------------------------------------------
 
-      case '/patient':
-        return MaterialPageRoute(builder: (_) => const PatientHomeScreen());
+      case home:
+        return MaterialPageRoute(
+          builder: (_) => const PatientHomeScreen(),
+        );
 
-      // --------------------------------------------------
-      // ACTIVITY SELECTION
-      // --------------------------------------------------
+    // --------------------------------------------------
+    // ACTIVITY SELECTION
+    // --------------------------------------------------
 
-      case '/patient/activities':
+      case activities:
         return MaterialPageRoute(
           builder: (_) => const ActivitySelectionScreen(),
         );
 
-      // --------------------------------------------------
-      // GAME INSTRUCTIONS
-      // --------------------------------------------------
+    // --------------------------------------------------
+    // GAME INSTRUCTIONS
+    // --------------------------------------------------
 
-      case '/patient/instructions':
-        final recommendation = settings.arguments as GameRecommendation;
+      case instructions:
+        final recommendation =
+        settings.arguments as GameRecommendation;
 
         return MaterialPageRoute(
-          builder: (_) => GameInstructionScreen(recommendation: recommendation),
+          builder: (_) => GameInstructionScreen(
+            config: recommendation.config,
+          ),
         );
 
-      // --------------------------------------------------
-      // GAME HOST
-      // --------------------------------------------------
+    // --------------------------------------------------
+    // GAME HOST
+    // --------------------------------------------------
 
-      case '/patient/game':
+      case game:
         final config = settings.arguments as GameConfig;
 
         return MaterialPageRoute(
-          builder: (_) => GameHostScreen(config: config),
+          builder: (_) => GameHostScreen(
+            config: config,
+          ),
         );
 
-      // --------------------------------------------------
-      // GAME RESULT
-      // --------------------------------------------------
+    // --------------------------------------------------
+    // GAME RESULT
+    // --------------------------------------------------
 
-      case '/patient/result':
+      case result:
         final result = settings.arguments as GameResult;
 
         return MaterialPageRoute(
-          builder: (_) => GameResultScreen(result: result),
+          builder: (_) => GameResultScreen(
+            result: result,
+          ),
         );
 
-      // --------------------------------------------------
-      // PROGRESS
-      // --------------------------------------------------
+    // --------------------------------------------------
+    // PROGRESS
+    // --------------------------------------------------
 
-      case '/patient/progress':
-        return MaterialPageRoute(builder: (_) => const ProgressScreen());
+      case progress:
+        return MaterialPageRoute(
+          builder: (_) => const ProgressScreen(),
+        );
 
-      // --------------------------------------------------
-      // REMINDERS
-      // --------------------------------------------------
+    // --------------------------------------------------
+    // REMINDERS
+    // --------------------------------------------------
 
-      case '/patient/reminders':
-        return MaterialPageRoute(builder: (_) => const ReminderScreen());
+      case reminders:
+        return MaterialPageRoute(
+          builder: (_) => const ReminderScreen(),
+        );
 
-      // --------------------------------------------------
-      // UNKNOWN ROUTE
-      // --------------------------------------------------
+    // --------------------------------------------------
+    // UNKNOWN ROUTE
+    // --------------------------------------------------
 
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(
             body: Center(
-              child: Text('Page not found', style: TextStyle(fontSize: 20)),
+              child: Text(
+                'Page not found',
+                style: TextStyle(fontSize: 20),
+              ),
             ),
           ),
         );
