@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'games/memory_game/memory_game.dart';
-import 'games/memory_game/memory_config.dart';
+import 'games/attention_game/attention_game.dart';
+import 'games/attention_game/attention_config.dart';
 
 void main() {
   runApp(const CognitiveCareApp());
@@ -18,8 +18,8 @@ class CognitiveCareApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
       ),
-      home: const MemoryGame(
-        config: MemoryGameConfig.level1,
+      home: const AttentionGame(
+        config: AttentionGameConfig.level1,
       ),
     );
   }
