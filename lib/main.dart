@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'games/attention_game/attention_game.dart';
 import 'games/attention_game/attention_config.dart';
+import 'voice/voice_test_screen.dart';
 
 void main() {
   runApp(const CognitiveCareApp());
