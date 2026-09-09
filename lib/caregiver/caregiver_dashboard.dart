@@ -1,289 +1,422 @@
+
 import 'package:flutter/material.dart';
 import 'performance_chart.dart';
 import 'caregiver_service.dart';
+import '../core/models/game_performance.dart';
 
 class CaregiverDashboard extends StatefulWidget {
-  const CaregiverDashboard({super.key});
+const CaregiverDashboard({super.key});
 
-  @override
-  State<CaregiverDashboard> createState() => _CaregiverDashboardState();
+@override
+State<CaregiverDashboard> createState() => _CaregiverDashboardState();
 }
 
 class _CaregiverDashboardState extends State<CaregiverDashboard> {
-  final CaregiverService service = CaregiverService.instance;
+final CaregiverService service = CaregiverService.instance;
 
-  final String patientId = 'P001';
+final String patientId = 'P001';
 
-  @override
-  Widget build(BuildContext context) {
-    final sessions = service.getSessions(patientId);
+bool _loading = true;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Caregiver Dashboard'),
-        centerTitle: true,
-      ),
+@override
+void initState() {
+super.initState();
+_loadSessions();
+}
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+Future<void> _loadSessions() async {
+await service.loadSessions();
 
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+if (mounted) {
+setState(() {
+_loading = false;
+});
+}
+}
 
-            // Patient Overview
-            const Text(
-              'Patient Overview',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+@override
+Widget build(BuildContext context) {
+if (_loading) {
+return const Scaffold(
+body: Center(
+child: CircularProgressIndicator(),
+),
+);
+}
 
-            const SizedBox(height: 20),
+final sessions = service.getSessions(patientId);
 
-            Card(
-              child: ListTile(
-                leading: const CircleAvatar(
-                  child: Icon(Icons.person),
-                ),
-                title: const Text(
-                  'Patient ID: P001',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                subtitle: const Text('Age: 72'),
-              ),
-            ),
+final averageScore = _averageScore(sessions);
+final averageAccuracy = _averageAccuracy(sessions);
 
-            const SizedBox(height: 25),
+final currentLevel = sessions.isEmpty
+? 1
+    : sessions.last.difficulty;
 
-            // Cognitive Performance
-            const Text(
-              'Cognitive Performance',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+final memoryProgress = _gameProgress(
+sessions,
+'Remember the Objects',
+);
 
-            const SizedBox(height: 12),
+final attentionProgress = _gameProgress(
+sessions,
+'Find the Target',
+);
 
-            Row(
-              children: [
-                Expanded(
-                  child: _summaryCard(
-                    'Average Score',
-                    '72%',
-                    Icons.score,
-                  ),
-                ),
+return Scaffold(
+appBar: AppBar(
+title: const Text('Caregiver Dashboard'),
+centerTitle: true,
+),
 
-                const SizedBox(width: 12),
+body: RefreshIndicator(
+onRefresh: _loadSessions,
+child: SingleChildScrollView(
+physics: const AlwaysScrollableScrollPhysics(),
+padding: const EdgeInsets.all(20),
 
-                Expanded(
-                  child: _summaryCard(
-                    'Accuracy',
-                    '78%',
-                    Icons.check_circle,
-                  ),
-                ),
-              ],
-            ),
+child: Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+children: [
+// Patient Overview
+const Text(
+'Patient Overview',
+style: TextStyle(
+fontSize: 24,
+fontWeight: FontWeight.bold,
+),
+),
 
-            const SizedBox(height: 12),
+const SizedBox(height: 20),
 
-            Row(
-              children: [
-                Expanded(
-                  child: _summaryCard(
-                    'Games Played',
-                    '${sessions.length}',
-                    Icons.games,
-                  ),
-                ),
+Card(
+child: ListTile(
+leading: const CircleAvatar(
+child: Icon(Icons.person),
+),
+title: const Text(
+'Patient ID: P001',
+style: TextStyle(
+fontWeight: FontWeight.bold,
+),
+),
+subtitle: const Text('Age: 72'),
+),
+),
 
-                const SizedBox(width: 12),
+const SizedBox(height: 25),
 
-                Expanded(
-                  child: _summaryCard(
-                    'Current Level',
-                    '3',
-                    Icons.trending_up,
-                  ),
-                ),
-              ],
-            ),
+// Cognitive Performance
+const Text(
+'Cognitive Performance',
+style: TextStyle(
+fontSize: 20,
+fontWeight: FontWeight.bold,
+),
+),
 
-            const SizedBox(height: 25),
+const SizedBox(height: 12),
 
-            // Recent Progress
-            const Text(
-              'Recent Progress',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+Row(
+children: [
+Expanded(
+child: _summaryCard(
+'Average Score',
+'${averageScore.round()}%',
+Icons.score,
+),
+),
 
-            const SizedBox(height: 12),
+const SizedBox(width: 12),
 
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
+Expanded(
+child: _summaryCard(
+'Accuracy',
+'${averageAccuracy.round()}%',
+Icons.check_circle,
+),
+),
+],
+),
 
-                child: Column(
-                  children: [
-                    _progressRow(
-                      'Memory Game',
-                      0.78,
-                    ),
+const SizedBox(height: 12),
 
-                    const SizedBox(height: 18),
+Row(
+children: [
+Expanded(
+child: _summaryCard(
+'Games Played',
+'${sessions.length}',
+Icons.games,
+),
+),
 
-                    _progressRow(
-                      'Attention Game',
-                      0.65,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+const SizedBox(width: 12),
 
-            const SizedBox(height: 25),
+Expanded(
+child: _summaryCard(
+'Current Level',
+'$currentLevel',
+Icons.trending_up,
+),
+),
+],
+),
 
-            // Performance Chart
-            const PerformanceChart(),
+const SizedBox(height: 25),
 
-            const SizedBox(height: 25),
+// Recent Progress
+const Text(
+'Recent Progress',
+style: TextStyle(
+fontSize: 20,
+fontWeight: FontWeight.bold,
+),
+),
 
-            // Monitoring Alert
-            const Text(
-              'Monitoring Alert',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+const SizedBox(height: 12),
 
-            const SizedBox(height: 12),
+Card(
+child: Padding(
+padding: const EdgeInsets.all(20),
 
-            Card(
-              color: Colors.orange.shade50,
+child: Column(
+children: [
+_progressRow(
+'Memory Game',
+memoryProgress,
+),
 
-              child: const ListTile(
-                leading: Icon(
-                  Icons.warning_amber,
-                  color: Colors.orange,
-                ),
+const SizedBox(height: 18),
 
-                title: Text(
-                  'Performance needs attention',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+_progressRow(
+'Attention Game',
+attentionProgress,
+),
+],
+),
+),
+),
 
-                subtitle: Text(
-                  'Recent accuracy has decreased compared to previous sessions.',
-                ),
-              ),
-            ),
+const SizedBox(height: 25),
 
-            const SizedBox(height: 20),
+const PerformanceChart(),
 
-            // Session information
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.history),
+const SizedBox(height: 25),
 
-                title: const Text(
-                  'Recent Sessions',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+// Monitoring Alert
+const Text(
+'Monitoring Alert',
+style: TextStyle(
+fontSize: 20,
+fontWeight: FontWeight.bold,
+),
+),
 
-                subtitle: Text(
-                  '${sessions.length} game sessions recorded',
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+const SizedBox(height: 12),
 
-  // Summary card
-  static Widget _summaryCard(
-    String title,
-    String value,
-    IconData icon,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+_buildAlert(sessions),
 
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 30,
-            ),
+const SizedBox(height: 20),
 
-            const SizedBox(height: 8),
+// Session information
+Card(
+child: ListTile(
+leading: const Icon(Icons.history),
 
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+title: const Text(
+'Recent Sessions',
+style: TextStyle(
+fontWeight: FontWeight.bold,
+),
+),
 
-            const SizedBox(height: 5),
+subtitle: Text(
+'${sessions.length} game sessions recorded',
+),
+),
+),
+],
+),
+),
+),
+);
+}
 
-            Text(
-              title,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+double _averageScore(List<GamePerformance> sessions) {
+if (sessions.isEmpty) {
+return 0;
+}
 
-  // Progress bar
-  static Widget _progressRow(
-    String game,
-    double progress,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+final total = sessions.fold<double>(
+0,
+(sum, session) => sum + session.score,
+);
 
-      children: [
-        Row(
-          mainAxisAlignment:
-              MainAxisAlignment.spaceBetween,
+return total / sessions.length;
+}
 
-          children: [
-            Text(game),
+double _averageAccuracy(List<GamePerformance> sessions) {
+if (sessions.isEmpty) {
+return 0;
+}
 
-            Text(
-              '${(progress * 100).round()}%',
-            ),
-          ],
-        ),
+final total = sessions.fold<double>(
+0,
+(sum, session) => sum + session.accuracy,
+);
 
-        const SizedBox(height: 8),
+return total / sessions.length;
+}
 
-        LinearProgressIndicator(
-          value: progress,
-          minHeight: 10,
-        ),
-      ],
-    );
-  }
+double _gameProgress(
+List<GamePerformance> sessions,
+String gameName,
+) {
+final gameSessions = sessions
+    .where((session) => session.gameName == gameName)
+    .toList();
+
+if (gameSessions.isEmpty) {
+return 0;
+}
+
+final total = gameSessions.fold<double>(
+0,
+(sum, session) => sum + session.accuracy,
+);
+
+return (total / gameSessions.length) / 100;
+}
+
+Widget _buildAlert(List<GamePerformance> sessions) {
+if (sessions.length < 2) {
+return const Card(
+child: ListTile(
+leading: Icon(Icons.info_outline),
+title: Text(
+'Not enough data yet',
+style: TextStyle(
+fontWeight: FontWeight.bold,
+),
+),
+subtitle: Text(
+'More game sessions are needed to identify performance changes.',
+),
+),
+);
+}
+
+final previous = sessions[sessions.length - 2];
+final latest = sessions.last;
+
+final decreased = latest.accuracy < previous.accuracy - 10;
+
+if (decreased) {
+return Card(
+color: Colors.orange.shade50,
+child: const ListTile(
+leading: Icon(
+Icons.warning_amber,
+color: Colors.orange,
+),
+title: Text(
+'Performance needs attention',
+style: TextStyle(
+fontWeight: FontWeight.bold,
+),
+),
+subtitle: Text(
+'Recent accuracy has decreased compared to the previous session.',
+),
+),
+);
+}
+
+return const Card(
+child: ListTile(
+leading: Icon(
+Icons.check_circle_outline,
+),
+title: Text(
+'Performance is stable',
+style: TextStyle(
+fontWeight: FontWeight.bold,
+),
+),
+subtitle: Text(
+'No significant decrease was detected in recent performance.',
+),
+),
+);
+}
+
+static Widget _summaryCard(
+String title,
+String value,
+IconData icon,
+) {
+return Card(
+child: Padding(
+padding: const EdgeInsets.all(16),
+
+child: Column(
+children: [
+Icon(
+icon,
+size: 30,
+),
+
+const SizedBox(height: 8),
+
+Text(
+value,
+style: const TextStyle(
+fontSize: 24,
+fontWeight: FontWeight.bold,
+),
+),
+
+const SizedBox(height: 5),
+
+Text(
+title,
+textAlign: TextAlign.center,
+),
+],
+),
+),
+);
+}
+
+static Widget _progressRow(
+String game,
+double progress,
+) {
+return Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+
+children: [
+Row(
+mainAxisAlignment:
+MainAxisAlignment.spaceBetween,
+
+children: [
+Text(game),
+
+Text(
+'${(progress * 100).round()}%',
+),
+],
+),
+
+const SizedBox(height: 8),
+
+LinearProgressIndicator(
+value: progress.clamp(0.0, 1.0),
+minHeight: 10,
+),
+],
+);
+}
 }

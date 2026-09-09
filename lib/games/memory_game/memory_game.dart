@@ -303,481 +303,597 @@ _remainingStudySeconds = 0;
 _selectionStartTime = null;
 _result = null;
 
-_phase = MemoryGamePhase.instruction;
-});
-}
+  DateTime? _selectionStartTime;
 
-Widget _buildInstructionScreen() {
-return Center(
-child: Padding(
-padding: const EdgeInsets.all(32),
-child: Column(
-mainAxisAlignment: MainAxisAlignment.center,
-children: [
-Text(
-_getRoundText(),
-style: const TextStyle(
-fontSize: 22,
-fontWeight: FontWeight.w600,
-),
-),
+  MemoryGameResult? _result;
 
-const SizedBox(height: 20),
+  // Session tracking
+  static const int _totalRounds = 3;
+  int _currentRound = 1;
+  final List<MemoryGameResult> _roundResults = [];
 
-const Icon(
-Icons.psychology_outlined,
-size: 90,
-),
+  @override
+  void initState() {
+    super.initState();
+    _config = widget.config;
+  }
 
-const SizedBox(height: 24),
+  @override
+  void didUpdateWidget(covariant MemoryGame oldWidget) {
+    super.didUpdateWidget(oldWidget);
 
-Text(
-widget.localization.translate('memory.title'),
-textAlign: TextAlign.center,
-style: const TextStyle(
-fontSize: 32,
-fontWeight: FontWeight.bold,
-),
-),
+    if (oldWidget.config != widget.config) {
+      _config = widget.config;
+      _resetGame();
+    }
+  }
 
-const SizedBox(height: 24),
+  @override
+  void dispose() {
+    _studyTimer?.cancel();
+    super.dispose();
+  }
 
-Text(
-widget.localization.translate('memory.study'),
-textAlign: TextAlign.center,
-style: const TextStyle(
-fontSize: 24,
-),
-),
+  void _resetGame() {
+    _studyTimer?.cancel();
 
-const SizedBox(height: 12),
+    setState(() {
+      _phase = MemoryGamePhase.instruction;
+      _targets = [];
+      _choices = [];
+      _selectedIds.clear();
+      _remainingStudySeconds = 0;
+      _selectionStartTime = null;
+      _result = null;
 
-  Text(
-    '${widget.localization.translate('memory.instruction')}\n\n'
-        '${_getObjectsSecondsText()}',
-    textAlign: TextAlign.center,
-    style: const TextStyle(
-      fontSize: 20,
-    ),
-  ),
+      _currentRound = 1;
+      _roundResults.clear();
+    });
+  }
 
-const SizedBox(height: 36),
+  void _startGame() {
+    final availableObjects = List<MemoryObject>.from(
+      MemoryContent.objects,
+    )..shuffle(_random);
 
-SizedBox(
-width: 220,
-height: 64,
-child: FilledButton(
-onPressed: _startGame,
-child: Text(
-widget.localization.translate('common.start'),
-style: const TextStyle(
-fontSize: 22,
-),
-),
-),
-),
-],
-),
-),
-);
-}
+    final objectCount = _config.objectCount.clamp(
+      1,
+      availableObjects.length,
+    );
 
-Widget _buildStudyScreen() {
-return Column(
-children: [
-Padding(
-padding: const EdgeInsets.all(20),
-child: Row(
-mainAxisAlignment:
-MainAxisAlignment.spaceBetween,
-children: [
-Text(
-_getRoundText(),
-style: const TextStyle(
-fontSize: 22,
-fontWeight: FontWeight.w600,
-),
-),
+    final targets = availableObjects.take(objectCount).toList();
 
-Text(
-'$_remainingStudySeconds',
-style: const TextStyle(
-fontSize: 32,
-fontWeight: FontWeight.bold,
-),
-),
-],
-),
-),
+    final remainingObjects = availableObjects
+        .where((object) => !targets.any((target) => target.id == object.id))
+        .toList();
 
-Text(
-widget.localization.translate('memory.study'),
-style: const TextStyle(
-fontSize: 26,
-fontWeight: FontWeight.bold,
-),
-),
+    final maxDistractors = remainingObjects.length;
+    final distractorCount = _config.distractorCount.clamp(
+      0,
+      maxDistractors,
+    );
 
-Expanded(
-child: GridView.builder(
-padding: const EdgeInsets.all(24),
-gridDelegate:
-const SliverGridDelegateWithMaxCrossAxisExtent(
-maxCrossAxisExtent: 220,
-mainAxisSpacing: 20,
-crossAxisSpacing: 20,
-childAspectRatio: 1,
-),
-itemCount: _targets.length,
-itemBuilder: (context, index) {
-final object = _targets[index];
+    final distractors = remainingObjects.take(distractorCount).toList();
 
-return Card(
-child: Column(
-mainAxisAlignment:
-MainAxisAlignment.center,
-children: [
-Text(
-object.visual,
-style: const TextStyle(
-fontSize: 64,
-),
-),
+    final choices = [
+      ...targets,
+      ...distractors,
+    ]..shuffle(_random);
 
-const SizedBox(height: 12),
+    _studyTimer?.cancel();
 
-Text(
-_getObjectName(object),
-style: const TextStyle(
-fontSize: 22,
-fontWeight: FontWeight.w600,
-),
-),
-],
-),
-);
-},
-),
-),
-],
-);
-}
+    setState(() {
+      _targets = targets;
+      _choices = choices;
+      _selectedIds.clear();
 
-Widget _buildSelectionScreen() {
-return Column(
-children: [
-Padding(
-padding:
-const EdgeInsets.fromLTRB(20, 12, 20, 8),
-child: Row(
-mainAxisAlignment:
-MainAxisAlignment.spaceBetween,
-children: [
-Text(
-_getRoundText(),
-style: const TextStyle(
-fontSize: 22,
-fontWeight: FontWeight.w600,
-),
-),
+      _remainingStudySeconds = _config.exposureTime;
 
-IconButton(
-onPressed: _exitGame,
-icon: const Icon(Icons.close),
-iconSize: 30,
-tooltip:
-widget.localization.translate(
-'common.exit',
-),
-),
-],
-),
-),
+      _phase = MemoryGamePhase.studying;
+    });
 
-Padding(
-padding: const EdgeInsets.symmetric(
-horizontal: 24,
-vertical: 8,
-),
-child: Text(
-widget.localization.translate(
-'memory.select_instruction',
-),
-textAlign: TextAlign.center,
-style: const TextStyle(
-fontSize: 24,
-fontWeight: FontWeight.w600,
-),
-),
-),
+    _studyTimer = Timer.periodic(
+      const Duration(seconds: 1),
+          (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
 
-Expanded(
-child: GridView.builder(
-padding: const EdgeInsets.all(24),
-gridDelegate:
-const SliverGridDelegateWithMaxCrossAxisExtent(
-maxCrossAxisExtent: 220,
-mainAxisSpacing: 20,
-crossAxisSpacing: 20,
-childAspectRatio: 1,
-),
-itemCount: _choices.length,
-itemBuilder: (context, index) {
-final object = _choices[index];
+        if (_remainingStudySeconds <= 1) {
+          timer.cancel();
+          _beginSelection();
+        } else {
+          setState(() {
+            _remainingStudySeconds--;
+          });
+        }
+      },
+    );
+  }
 
-final selected =
-_selectedIds.contains(object.id);
+  void _beginSelection() {
+    if (!mounted) return;
 
-return Card(
-child: InkWell(
-borderRadius:
-BorderRadius.circular(12),
-onTap: () =>
-_toggleSelection(object),
-child: Container(
-decoration: BoxDecoration(
-borderRadius:
-BorderRadius.circular(12),
-border: Border.all(
-width: selected ? 4 : 1,
-),
-),
-child: Column(
-mainAxisAlignment:
-MainAxisAlignment.center,
-mainAxisSize: MainAxisSize.min,
-children: [
-Text(
-object.visual,
-style: const TextStyle(
-fontSize: 52,
-),
-),
+    setState(() {
+      _phase = MemoryGamePhase.selecting;
+      _selectionStartTime = DateTime.now();
+    });
+  }
 
-const SizedBox(height: 6),
+  void _toggleSelection(MemoryObject object) {
+    if (_phase != MemoryGamePhase.selecting) return;
 
-Text(
-_getObjectName(object),
-style: const TextStyle(
-fontSize: 19,
-fontWeight: FontWeight.w600,
-),
-),
+    setState(() {
+      if (_selectedIds.contains(object.id)) {
+        _selectedIds.remove(object.id);
+      } else {
+        _selectedIds.add(object.id);
+      }
+    });
+  }
 
-if (selected)
-const Padding(
-padding:
-EdgeInsets.only(top: 4),
-child: Icon(
-Icons.check_circle,
-size: 24,
-),
-),
-],
-),
-),
-),
-);
-},
-),
-),
+  void _submitAnswers() {
+    if (_phase != MemoryGamePhase.selecting) return;
 
-Padding(
-padding:
-const EdgeInsets.fromLTRB(24, 4, 24, 12),
-child: Row(
-mainAxisAlignment:
-MainAxisAlignment.center,
-children: [
-SizedBox(
-width: 160,
-height: 56,
-child: OutlinedButton(
-onPressed: _exitGame,
-child: Text(
-widget.localization.translate(
-'common.exit',
-),
-style: const TextStyle(
-fontSize: 20,
-),
-),
-),
-),
+    final targetIds = _targets.map((object) => object.id).toSet();
 
-const SizedBox(width: 16),
+    final correct = _selectedIds.intersection(targetIds).length;
 
-SizedBox(
-width: 160,
-height: 56,
-child: FilledButton(
-onPressed: _submitAnswers,
-child: Text(
-widget.localization.translate(
-'common.done',
-),
-style: const TextStyle(
-fontSize: 22,
-),
-),
-),
-),
-],
-),
-),
-],
-);
-}
+    final incorrect = _selectedIds
+        .where((id) => !targetIds.contains(id))
+        .length;
 
-Widget _buildResultScreen() {
-final result = _result!;
-final isFinalRound =
-_currentRound == _totalRounds;
+    final missed = targetIds
+        .where((id) => !_selectedIds.contains(id))
+        .length;
 
-return Center(
-child: SingleChildScrollView(
-padding: const EdgeInsets.all(32),
-child: Column(
-mainAxisAlignment:
-MainAxisAlignment.center,
-children: [
-const Icon(
-Icons.check_circle_outline,
-size: 90,
-),
+    final accuracy = _targets.isEmpty
+        ? 0.0
+        : correct / _targets.length;
 
-const SizedBox(height: 20),
+    final responseTime = _selectionStartTime == null
+        ? 0.0
+        : DateTime.now()
+        .difference(_selectionStartTime!)
+        .inMilliseconds /
+        1000.0;
 
-Text(
-isFinalRound
-? widget.localization.translate(
-'game.session_complete',
-)
-    : widget.localization.translate(
-'game.round_complete',
-),
-textAlign: TextAlign.center,
-style: const TextStyle(
-fontSize: 32,
-fontWeight: FontWeight.bold,
-),
-),
+    final result = MemoryGameResult(
+      gameId: _config.gameId,
+      difficultyLevel: _config.difficultyLevel,
+      totalTargets: _targets.length,
+      correct: correct,
+      incorrect: incorrect,
+      missed: missed,
+      accuracy: accuracy,
+      responseTime: responseTime,
+      completed: true,
+    );
 
-const SizedBox(height: 24),
+    // Store this round's result.
+    _roundResults.add(result);
 
-Text(
-'${(result.accuracy * 100).round()}%',
-style: const TextStyle(
-fontSize: 52,
-fontWeight: FontWeight.bold,
-),
-),
+    final isFinalRound = _currentRound == _totalRounds;
 
-const SizedBox(height: 24),
+    setState(() {
+      _result = result;
+      _phase = MemoryGamePhase.result;
+    });
 
-Text(
-'${widget.localization.translate('memory.correct')}: '
-'${result.correct}',
-style: const TextStyle(
-fontSize: 22,
-),
-),
+    // Notify the host ONLY when the entire 3-round session is complete.
+    if (isFinalRound) {
+      widget.onGameComplete?.call(result);
+    }
+  }
 
-Text(
-'${widget.localization.translate('memory.missed')}: '
-'${result.missed}',
-style: const TextStyle(
-fontSize: 22,
-),
-),
+  void _exitGame() {
+    _studyTimer?.cancel();
 
-Text(
-'${widget.localization.translate('memory.incorrect')}: '
-'${result.incorrect}',
-style: const TextStyle(
-fontSize: 22,
-),
-),
+    final targetCount = _targets.length;
 
-const SizedBox(height: 12),
+    final result = MemoryGameResult(
+      gameId: _config.gameId,
+      difficultyLevel: _config.difficultyLevel,
+      totalTargets: targetCount,
+      correct: 0,
+      incorrect: 0,
+      missed: targetCount,
+      accuracy: 0.0,
+      responseTime: _selectionStartTime == null
+          ? 0.0
+          : DateTime.now()
+          .difference(_selectionStartTime!)
+          .inMilliseconds /
+          1000.0,
+      completed: false,
+    );
 
-Text(
-_getResponseTimeText(result.responseTime),
-style: const TextStyle(
-fontSize: 20,
-),
-),
+    widget.onGameComplete?.call(result);
 
-const SizedBox(height: 36),
+    _resetGame();
+  }
 
-if (isFinalRound)
-SizedBox(
-width: 220,
-height: 64,
-child: FilledButton(
-onPressed: _resetGame,
-child: Text(
-widget.localization.translate(
-'common.try_again',
-),
-style: const TextStyle(
-fontSize: 22,
-),
-),
-),
-)
-else
-SizedBox(
-width: 220,
-height: 64,
-child: FilledButton(
-onPressed: _startNextRound,
-child: Text(
-widget.localization.translate(
-'common.next',
-),
-style: const TextStyle(
-fontSize: 22,
-),
-),
-),
-),
-],
-),
-),
-);
-}
+  void _startNextRound() {
+    if (_currentRound >= _totalRounds) return;
 
-@override
-Widget build(BuildContext context) {
-Widget content;
+    setState(() {
+      _currentRound++;
+      _targets = [];
+      _choices = [];
+      _selectedIds.clear();
+      _remainingStudySeconds = 0;
+      _selectionStartTime = null;
+      _result = null;
+      _phase = MemoryGamePhase.instruction;
+    });
+  }
 
-switch (_phase) {
-case MemoryGamePhase.instruction:
-content = _buildInstructionScreen();
-break;
+  Widget _buildInstructionScreen() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Round $_currentRound of $_totalRounds',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Icon(
+              Icons.psychology_outlined,
+              size: 90,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Remember the Objects',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Remember these objects.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 24),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'You will see ${_config.objectCount} objects for '
+                  '${_config.exposureTime} seconds.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20),
+            ),
+            const SizedBox(height: 36),
+            SizedBox(
+              width: 220,
+              height: 64,
+              child: FilledButton(
+                onPressed: _startGame,
+                child: const Text(
+                  'Start Round',
+                  style: TextStyle(fontSize: 22),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-case MemoryGamePhase.studying:
-content = _buildStudyScreen();
-break;
+  Widget _buildStudyScreen() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Round $_currentRound of $_totalRounds',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                '$_remainingStudySeconds',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Text(
+          'Remember these objects',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.all(24),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 220,
+              mainAxisSpacing: 20,
+              crossAxisSpacing: 20,
+              childAspectRatio: 1,
+            ),
+            itemCount: _targets.length,
+            itemBuilder: (context, index) {
+              final object = _targets[index];
 
-case MemoryGamePhase.selecting:
-content = _buildSelectionScreen();
-break;
+              return Card(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      object.visual,
+                      style: const TextStyle(fontSize: 64),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      object.name,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
 
-case MemoryGamePhase.result:
-content = _buildResultScreen();
-break;
-}
+  Widget _buildSelectionScreen() {
+    return Column(
+      children: [Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Round $_currentRound of $_totalRounds',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Row(
+              children: [
+                Text(
+                  '$_remainingStudySeconds',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                IconButton(
+                  onPressed: _exitGame,
+                  icon: const Icon(Icons.close),
+                  iconSize: 30,
+                  tooltip: 'Exit',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.all(24),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 220,
+              mainAxisSpacing: 20,
+              crossAxisSpacing: 20,
+              childAspectRatio: 1,
+            ),
+            itemCount: _choices.length,
+            itemBuilder: (context, index) {
+              final object = _choices[index];
+              final selected = _selectedIds.contains(object.id);
 
-return Scaffold(
-appBar: AppBar(
-title: Text(
-widget.localization.translate('app.title'),
-),
-centerTitle: true,
-),
-body: content,
-);
-}
+              return Card(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _toggleSelection(object),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        width: selected ? 4 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          object.visual,
+                          style: const TextStyle(fontSize: 52),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          object.name,
+                          style: const TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (selected)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 4),
+                            child: Icon(
+                              Icons.check_circle,
+                              size: 24,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 160,
+                height: 56,
+                child: OutlinedButton(
+                  onPressed: _exitGame,
+                  child: const Text(
+                    'Exit',
+                    style: TextStyle(fontSize: 20),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 160,
+                height: 56,
+                child: FilledButton(
+                  onPressed: _submitAnswers,
+                  child: const Text(
+                    'Done',
+                    style: TextStyle(fontSize: 22),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResultScreen() {
+    final result = _result!;
+    final isFinalRound = _currentRound == _totalRounds;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.check_circle_outline,
+              size: 90,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              isFinalRound
+                  ? 'Session Complete!'
+                  : 'Round $_currentRound Complete!',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              '${(result.accuracy * 100).round()}%',
+              style: const TextStyle(
+                fontSize: 52,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Correct: ${result.correct}',
+              style: const TextStyle(fontSize: 22),
+            ),
+            Text(
+              'Missed: ${result.missed}',
+              style: const TextStyle(fontSize: 22),
+            ),
+            Text(
+              'Incorrect: ${result.incorrect}',
+              style: const TextStyle(fontSize: 22),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Response time: '
+                  '${result.responseTime.toStringAsFixed(1)} seconds',
+              style: const TextStyle(fontSize: 20),
+            ),
+            const SizedBox(height: 36),
+            if (isFinalRound)
+              SizedBox(
+                width: 220,
+                height: 64,
+                child: FilledButton(
+                  onPressed: _resetGame,
+                  child: const Text(
+                    'Play Again',
+                    style: TextStyle(fontSize: 22),
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                width: 220,
+                height: 64,
+                child: FilledButton(
+                  onPressed: _startNextRound,
+                  child: const Text(
+                    'Next Round',
+                    style: TextStyle(fontSize: 22),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget content;
+
+    switch (_phase) {
+      case MemoryGamePhase.instruction:
+        content = _buildInstructionScreen();
+        break;
+      case MemoryGamePhase.studying:
+        content = _buildStudyScreen();
+        break;
+      case MemoryGamePhase.selecting:
+        content = _buildSelectionScreen();
+        break;
+      case MemoryGamePhase.result:
+        content = _buildResultScreen();
+        break;
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cognitive Care'),
+        centerTitle: true,
+      ),
+      body: content,
+    );
+  }
 }
