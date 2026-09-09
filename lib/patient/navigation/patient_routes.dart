@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/game_config.dart';
 import '../models/game_result.dart';
-import '../models/game_recommendation.dart';
+//import '../models/game_recommendation.dart';
 
 import '../screens/patient_home_screen.dart';
 import '../screens/activity_selection_screen.dart';
@@ -10,9 +10,20 @@ import '../screens/game_instruction_screen.dart';
 import '../screens/game_host_screen.dart';
 import '../screens/game_result_screen.dart';
 import '../screens/progress_screen.dart';
+import '../../language_selection_screen.dart';
 import '../screens/reminder_screen.dart';
 
+
 class PatientRoutes {
+  static const String home = '/patient';
+  static const String activities = '/patient/activities';
+  static const String instructions = '/patient/instructions';
+  static const String game = '/patient/game';
+  static const String result = '/patient/result';
+  static const String progress = '/patient/progress';
+  static const String reminders = '/patient/reminders';
+  static const String language = '/patient/language';
+
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       // --------------------------------------------------
@@ -34,12 +45,16 @@ class PatientRoutes {
       // --------------------------------------------------
       // GAME INSTRUCTIONS
       // --------------------------------------------------
+      case '/patient/language':
+        return MaterialPageRoute(
+          builder: (_) => const LanguageSelectionScreen(),
+        );
 
       case '/patient/instructions':
-        final recommendation = settings.arguments as GameRecommendation;
+        final config = settings.arguments as GameConfig;
 
         return MaterialPageRoute(
-          builder: (_) => GameInstructionScreen(recommendation: recommendation),
+          builder: (_) => GameInstructionScreen(config: config),
         );
 
       // --------------------------------------------------

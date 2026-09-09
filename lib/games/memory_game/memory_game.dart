@@ -214,13 +214,17 @@ class _MemoryGameState extends State<MemoryGame> {
     // Store this round's result.
     _roundResults.add(result);
 
-    // Send this individual round result to M1.
-    widget.onGameComplete?.call(result);
+    final isFinalRound = _currentRound == _totalRounds;
 
     setState(() {
       _result = result;
       _phase = MemoryGamePhase.result;
     });
+
+    // Notify the host ONLY when the entire 3-round session is complete.
+    if (isFinalRound) {
+      widget.onGameComplete?.call(result);
+    }
   }
 
   void _exitGame() {
