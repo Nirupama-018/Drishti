@@ -1,26 +1,23 @@
 import 'package:flutter/material.dart';
 
-import 'games/attention_game/attention_game.dart';
-import 'games/attention_game/attention_config.dart';
+import 'patient/navigation/patient_routes.dart';
+import 'patient/theme/patient_theme.dart';
 
 void main() {
-  runApp(const CognitiveCareApp());
+  runApp(const DrishtiApp());
 }
 
-class CognitiveCareApp extends StatelessWidget {
-  const CognitiveCareApp({super.key});
+class DrishtiApp extends StatelessWidget {
+  const DrishtiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Cognitive Care',
-      theme: ThemeData(
-        useMaterial3: true,
-      ),
-      home: const AttentionGame(
-        config: AttentionGameConfig.level1,
-      ),
+      title: 'Drishti',
+      theme: PatientTheme.theme,
+      initialRoute: PatientRoutes.home,
+      onGenerateRoute: PatientRoutes.generateRoute,
     );
   }
 }
