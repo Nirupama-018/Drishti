@@ -7,14 +7,19 @@ import 'attention_config.dart';
 import 'attention_content.dart';
 import 'attention_result.dart';
 
+import '../../localization/localization_manager.dart';
+import '../../localization/localized_game_content.dart';
+
 class AttentionGame extends StatefulWidget {
   final AttentionGameConfig config;
   final ValueChanged<AttentionGameResult>? onGameComplete;
+  final LocalizationManager localization;
 
   const AttentionGame({
     super.key,
     this.config = AttentionGameConfig.level1,
     this.onGameComplete,
+    required this.localization,
   });
 
   @override
@@ -50,6 +55,36 @@ class _AttentionGameState extends State<AttentionGame> {
   final List<double> _responseTimes = [];
 
   AttentionGameResult? _result;
+
+  String _getObjectName(AttentionObject object) {
+    return LocalizedGameContent.getObjectName(
+      object.id,
+      widget.localization.currentLanguage,
+    );
+  }
+
+  String _getTrialText() {
+    return widget.localization
+        .translate('attention.trial')
+        .replaceAll('{current}', _currentTrial.toString())
+        .replaceAll('{total}', _config.trialCount.toString());
+  }
+
+  String _getTrialInstructionText() {
+    return widget.localization
+        .translate('attention.trials_time')
+        .replaceAll('{trials}', _config.trialCount.toString())
+        .replaceAll(
+      '{seconds}',
+      _config.timeLimit.toStringAsFixed(0),
+    );
+  }
+
+  String _getAverageResponseTimeText(double seconds) {
+    return widget.localization
+        .translate('attention.average_response_time')
+        .replaceAll('{seconds}', seconds.toStringAsFixed(1));
+  }
 
   @override
   void initState() {
@@ -290,38 +325,54 @@ class _AttentionGameState extends State<AttentionGame> {
               Icons.visibility_outlined,
               size: 90,
             ),
+
             const SizedBox(height: 24),
-            const Text(
-              'Find the Target',
+
+            Text(
+              widget.localization.translate('attention.title'),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
               ),
             ),
+
             const SizedBox(height: 24),
-            const Text(
-              'Find and tap the object shown at the top.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24),
-            ),
-            const SizedBox(height: 12),
+
             Text(
-              'There will be ${_config.trialCount} trials. '
-                  'You have ${_config.timeLimit.toStringAsFixed(0)} seconds '
-                  'for each trial.',
+              widget.localization.translate(
+                'attention.instruction',
+              ),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 20),
+              style: const TextStyle(
+                fontSize: 24,
+              ),
             ),
+
+            const SizedBox(height: 12),
+
+            Text(
+              _getTrialInstructionText(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 20,
+              ),
+            ),
+
             const SizedBox(height: 36),
+
             SizedBox(
               width: 220,
               height: 64,
               child: FilledButton(
                 onPressed: _startGame,
-                child: const Text(
-                  'Start Game',
-                  style: TextStyle(fontSize: 22),
+                child: Text(
+                  widget.localization.translate(
+                    'common.start',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 22,
+                  ),
                 ),
               ),
             ),
@@ -345,15 +396,17 @@ class _AttentionGameState extends State<AttentionGame> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment:
+            MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Trial $_currentTrial of ${_config.trialCount}',
+                _getTrialText(),
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
                 ),
               ),
+
               Row(
                 children: [
                   Text(
@@ -363,40 +416,56 @@ class _AttentionGameState extends State<AttentionGame> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(width: 16),
+
                   IconButton(
                     onPressed: _exitGame,
                     icon: const Icon(Icons.close),
                     iconSize: 30,
-                    tooltip: 'Exit',
+                    tooltip: widget.localization.translate(
+                      'common.exit',
+                    ),
                   ),
                 ],
               ),
             ],
           ),
         ),
+
         const SizedBox(height: 8),
-        const Text(
-          'Find this object',
-          style: TextStyle(
+
+        Text(
+          widget.localization.translate(
+            'attention.find_this',
+          ),
+          style: const TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.bold,
           ),
         ),
+
         const SizedBox(height: 12),
+
         Card(
-          margin: const EdgeInsets.symmetric(horizontal: 32),
+          margin: const EdgeInsets.symmetric(
+            horizontal: 32,
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
                 Text(
                   target.visual,
-                  style: const TextStyle(fontSize: 64),
+                  style: const TextStyle(
+                    fontSize: 64,
+                  ),
                 ),
+
                 const SizedBox(height: 8),
+
                 Text(
-                  target.name,
+                  _getObjectName(target),
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w600,
@@ -406,12 +475,19 @@ class _AttentionGameState extends State<AttentionGame> {
             ),
           ),
         ),
+
         const SizedBox(height: 20),
-        const Text(
-          'Tap the matching object below',
+
+        Text(
+          widget.localization.translate(
+            'attention.tap_matching',
+          ),
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 20),
+          style: const TextStyle(
+            fontSize: 20,
+          ),
         ),
+
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -421,7 +497,8 @@ class _AttentionGameState extends State<AttentionGame> {
                   ? 3
                   : 4;
 
-              final rows = (_choices.length / columns).ceil();
+              final rows =
+              (_choices.length / columns).ceil();
 
               const horizontalPadding = 24.0;
               const verticalPadding = 24.0;
@@ -437,19 +514,24 @@ class _AttentionGameState extends State<AttentionGame> {
                       (verticalPadding * 2) -
                       (spacing * (rows - 1));
 
-              final cardWidth = gridWidth / columns;
-              final cardHeight = gridHeight / rows;
+              final cardWidth =
+                  gridWidth / columns;
+
+              final cardHeight =
+                  gridHeight / rows;
 
               return GridView.builder(
                 padding: const EdgeInsets.symmetric(
                   horizontal: horizontalPadding,
                   vertical: verticalPadding,
                 ),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate:
+                SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
                   mainAxisSpacing: spacing,
                   crossAxisSpacing: spacing,
-                  childAspectRatio: cardWidth / cardHeight,
+                  childAspectRatio:
+                  cardWidth / cardHeight,
                 ),
                 itemCount: _choices.length,
                 itemBuilder: (context, index) {
@@ -457,13 +539,16 @@ class _AttentionGameState extends State<AttentionGame> {
 
                   return Card(
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () => _handleChoiceTap(object),
+                      borderRadius:
+                      BorderRadius.circular(12),
+                      onTap: () =>
+                          _handleChoiceTap(object),
                       child: Center(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                            mainAxisSize:
+                            MainAxisSize.min,
                             children: [
                               Text(
                                 object.visual,
@@ -471,13 +556,16 @@ class _AttentionGameState extends State<AttentionGame> {
                                   fontSize: 52,
                                 ),
                               ),
+
                               const SizedBox(height: 4),
+
                               Text(
-                                object.name,
+                                _getObjectName(object),
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontSize: 19,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight:
+                                  FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -508,16 +596,22 @@ class _AttentionGameState extends State<AttentionGame> {
               Icons.check_circle_outline,
               size: 90,
             ),
+
             const SizedBox(height: 20),
-            const Text(
-              'Game Complete!',
+
+            Text(
+              widget.localization.translate(
+                'game.session_complete',
+              ),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
               ),
             ),
+
             const SizedBox(height: 24),
+
             Text(
               '${(result.accuracy * 100).round()}%',
               style: const TextStyle(
@@ -525,35 +619,59 @@ class _AttentionGameState extends State<AttentionGame> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+
             const SizedBox(height: 24),
+
             Text(
-              'Correct: ${result.correct}',
-              style: const TextStyle(fontSize: 22),
+              '${widget.localization.translate('attention.correct')}: '
+                  '${result.correct}',
+              style: const TextStyle(
+                fontSize: 22,
+              ),
             ),
+
             Text(
-              'Incorrect: ${result.incorrect}',
-              style: const TextStyle(fontSize: 22),
+              '${widget.localization.translate('attention.incorrect')}: '
+                  '${result.incorrect}',
+              style: const TextStyle(
+                fontSize: 22,
+              ),
             ),
+
             Text(
-              'Missed: ${result.missed}',
-              style: const TextStyle(fontSize: 22),
+              '${widget.localization.translate('attention.missed')}: '
+                  '${result.missed}',
+              style: const TextStyle(
+                fontSize: 22,
+              ),
             ),
+
             const SizedBox(height: 12),
+
             Text(
-              'Average response time: '
-                  '${result.averageResponseTime.toStringAsFixed(1)} seconds',
+              _getAverageResponseTimeText(
+                result.averageResponseTime,
+              ),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 20),
+              style: const TextStyle(
+                fontSize: 20,
+              ),
             ),
+
             const SizedBox(height: 36),
+
             SizedBox(
               width: 220,
               height: 64,
               child: FilledButton(
                 onPressed: _resetGame,
-                child: const Text(
-                  'Play Again',
-                  style: TextStyle(fontSize: 22),
+                child: Text(
+                  widget.localization.translate(
+                    'common.try_again',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 22,
+                  ),
                 ),
               ),
             ),
@@ -571,9 +689,11 @@ class _AttentionGameState extends State<AttentionGame> {
       case AttentionGamePhase.instruction:
         content = _buildInstructionScreen();
         break;
+
       case AttentionGamePhase.playing:
         content = _buildPlayingScreen();
         break;
+
       case AttentionGamePhase.result:
         content = _buildResultScreen();
         break;
@@ -581,7 +701,9 @@ class _AttentionGameState extends State<AttentionGame> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cognitive Care'),
+        title: Text(
+          widget.localization.translate('app.title'),
+        ),
         centerTitle: true,
       ),
       body: content,
