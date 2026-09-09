@@ -6,6 +6,7 @@ import 'localization/localization_manager.dart';
 // Attention Game
 import 'games/attention_game/attention_game.dart';
 import 'games/attention_game/attention_config.dart';
+import 'voice/voice_test_screen.dart';
 import 'games/attention_game/attention_result.dart';
 
 // Memory Game
