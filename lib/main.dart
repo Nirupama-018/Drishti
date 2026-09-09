@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'caregiver/caregiver_service.dart';
 import 'patient/navigation/patient_routes.dart';
 import 'patient/theme/patient_theme.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Load previously saved caregiver/game sessions.
+  await CaregiverService.instance.loadSessions();
+
   runApp(const DrishtiApp());
 }
 
@@ -14,7 +20,7 @@ class DrishtiApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Drishti',
+      title: 'Cognitive Care',
       theme: PatientTheme.theme,
       initialRoute: PatientRoutes.home,
       onGenerateRoute: PatientRoutes.generateRoute,
