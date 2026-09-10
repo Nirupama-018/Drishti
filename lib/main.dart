@@ -1,121 +1,307 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
+// Localization
+import 'localization/localization_manager.dart';
+
+// Attention Game
+import 'games/attention_game/attention_game.dart';
+import 'games/attention_game/attention_config.dart';
+import 'voice/voice_test_screen.dart';
+import 'games/attention_game/attention_result.dart';
+
+// Memory Game
+import 'games/memory_game/memory_game.dart';
+import 'games/memory_game/memory_config.dart';
+import 'games/memory_game/memory_result.dart';
+
+// Caregiver & Performance
+import 'core/models/game_result_adapter.dart';
+import 'caregiver/caregiver_service.dart';
+import 'caregiver/caregiver_dashboard.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Load previously saved game sessions
+  await CaregiverService.instance.loadSessions();
+
+  runApp(const CognitiveCareApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class CognitiveCareApp extends StatelessWidget {
+  const CognitiveCareApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'Cognitive Care',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const LanguageSelectionScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+// ============================================================
+// LANGUAGE SELECTION
+// ============================================================
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class LanguageSelectionScreen extends StatefulWidget {
+  const LanguageSelectionScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<LanguageSelectionScreen> createState() =>
+      _LanguageSelectionScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _LanguageSelectionScreenState
+    extends State<LanguageSelectionScreen> {
+  final LocalizationManager _localization =
+  LocalizationManager();
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  void _selectLanguage(String languageCode) {
+    _localization.setLanguage(languageCode);
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => IntegrationTestScreen(
+          localization: _localization,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('Cognitive Care'),
+        centerTitle: true,
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.language,
+                size: 80,
+              ),
+
+              const SizedBox(height: 30),
+
+              const Text(
+                'Choose Language',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 40),
+
+              // English
+              SizedBox(
+                width: 280,
+                height: 64,
+                child: FilledButton(
+                  onPressed: () => _selectLanguage('en'),
+                  child: const Text(
+                    'English',
+                    style: TextStyle(fontSize: 22),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              // Assamese
+              SizedBox(
+                width: 280,
+                height: 64,
+                child: FilledButton(
+                  onPressed: () => _selectLanguage('as'),
+                  child: const Text(
+                    'অসমীয়া',
+                    style: TextStyle(fontSize: 22),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              // Malayalam
+              SizedBox(
+                width: 280,
+                height: 64,
+                child: FilledButton(
+                  onPressed: () => _selectLanguage('ml'),
+                  child: const Text(
+                    'മലയാളം',
+                    style: TextStyle(fontSize: 22),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+    );
+  }
+}
+
+// ============================================================
+// INTEGRATION TEST SCREEN
+// ============================================================
+
+class IntegrationTestScreen extends StatelessWidget {
+  final LocalizationManager localization;
+
+  const IntegrationTestScreen({
+    super.key,
+    required this.localization,
+  });
+
+  // Start Attention Game
+  void _startAttentionGame(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AttentionGame(
+          config: AttentionGameConfig.level1,
+          localization: localization,
+          onGameComplete: (AttentionGameResult result) async {
+            final performance =
+            GameResultAdapter.fromAttentionResult(
+              result,
+              'P001',
+            );
+
+            if (performance != null) {
+              await CaregiverService.instance.addSession(
+                performance,
+              );
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  // Start Memory Game
+  void _startMemoryGame(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MemoryGame(
+          config: MemoryGameConfig.level1,
+          localization: localization,
+          onGameComplete: (MemoryGameResult result) async {
+            final performance =
+            GameResultAdapter.fromMemoryResult(
+              result,
+              'P001',
+            );
+
+            if (performance != null) {
+              await CaregiverService.instance.addSession(
+                performance,
+              );
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  // Open Caregiver Dashboard
+  void _openCaregiverDashboard(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CaregiverDashboard(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cognitive Care'),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Integration Test',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 15),
+
+              Text(
+                'Language: ${localization.currentLanguage}',
+                style: const TextStyle(
+                  fontSize: 18,
+                ),
+              ),
+
+              const SizedBox(height: 35),
+
+              // Attention Game
+              SizedBox(
+                width: 280,
+                child: ElevatedButton(
+                  onPressed: () =>
+                      _startAttentionGame(context),
+                  child: const Text(
+                    'Start Attention Game',
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 15),
+
+              // Memory Game
+              SizedBox(
+                width: 280,
+                child: ElevatedButton(
+                  onPressed: () =>
+                      _startMemoryGame(context),
+                  child: const Text(
+                    'Start Memory Game',
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              // Caregiver Dashboard
+              SizedBox(
+                width: 280,
+                child: OutlinedButton(
+                  onPressed: () =>
+                      _openCaregiverDashboard(context),
+                  child: const Text(
+                    'Open Caregiver Dashboard',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
